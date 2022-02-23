@@ -15,8 +15,8 @@ import (
 
 	"github.com/juan-carvajal/go-api/pkg/api/middleware"
 	"github.com/juan-carvajal/go-api/pkg/api/service/products"
+	"github.com/juan-carvajal/go-api/pkg/api/service/voucher"
 	"github.com/juan-carvajal/go-api/pkg/models"
-	"github.com/juan-carvajal/go-api/pkg/models/shared"
 )
 
 func main() {
@@ -34,38 +34,29 @@ func main() {
 		panic("could not init db")
 	}
 
-	err = db.Debug().AutoMigrate(models.Product{}, models.Voucher{})
+	err = db.Debug().AutoMigrate(models.Product{}, models.Voucher{}, models.User{}, models.VoucherRedeem{}, models.Subscription{})
 	if err != nil {
 		panic("migration failed")
 	}
 
-	fmt.Println("migrated")
+	fmt.Println("migrations completed")
 
 	router := mux.NewRouter()
 
 	router.Use(middleware.LoggingMiddleware)
 
-	router.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
+	productRepo := products.NewDefaultProductRepo(db)
+	voucherRepo := voucher.NewDefaultVoucherRepo(db)
+
+	apiRouter := router.PathPrefix("/api").Subrouter()
+
+	apiRouter.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		// an example API handler
 		json.NewEncoder(w).Encode(map[string]bool{"ok": true})
 	})
 
-	router.HandleFunc("/api/products", func(w http.ResponseWriter, r *http.Request) {
-		// an example API handler
-
-		repo := products.NewDefaultProductRepo(db)
-
-		products, err := repo.GetAllProducts(products.ProductQueryParams{
-			SearchParams: shared.SearchParams{Pagination: shared.Pagination{PageSize: 100, Offset: 5}},
-		})
-
-		if err != nil {
-			w.WriteHeader(500)
-			return
-		}
-
-		json.NewEncoder(w).Encode(products)
-	})
+	productService := products.NewDefaultProductService(productRepo, voucherRepo)
+	productService.RegisterRoutes(apiRouter)
 
 	fmt.Println("starting server")
 

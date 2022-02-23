@@ -1,6 +1,9 @@
 package products
 
 import (
+	"fmt"
+	"math"
+
 	"github.com/juan-carvajal/go-api/pkg/models"
 	"github.com/juan-carvajal/go-api/pkg/models/shared"
 	"gorm.io/gorm"
@@ -26,7 +29,7 @@ func (r *DefaultProductRepo) GetAllProducts(params ProductQueryParams) (*[]model
 	query := *r.db
 
 	if params.Search != "" {
-		query = *query.Where("name ilike %?%", params.Search)
+		query = *query.Where("name ilike ?", params.Search)
 
 		if query.Error != nil {
 			return nil, query.Error
@@ -43,11 +46,35 @@ func (r *DefaultProductRepo) GetAllProducts(params ProductQueryParams) (*[]model
 		return nil, query.Error
 	}
 
+	if params.Voucher == nil {
+		return &products, nil
+	}
+
+	fmt.Println(&params.Voucher, params.Voucher)
+
+	if params.Voucher.Type == models.Fixed {
+		for i := range products {
+			products[i].Price = float32(math.Max(float64(products[i].Price)-float64(params.Voucher.Discount), 0))
+		}
+	} else {
+		for i := range products {
+			products[i].Price = products[i].Price * (1 - params.Voucher.Discount)
+		}
+	}
+
 	return &products, nil
 }
 
 func (r *DefaultProductRepo) GetProductByID(id int) (*models.Product, error) {
-	return nil, nil
+	product := &models.Product{}
+
+	tx := r.db.First(&product, id)
+
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	return product, nil
 }
 
 func NewDefaultProductRepo(db *gorm.DB) ProductRepo {

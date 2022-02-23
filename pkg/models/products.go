@@ -1,10 +1,14 @@
 package models
 
-import "gorm.io/gorm"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 type Product struct {
 	gorm.Model
-	Name  string
-	Price float32
+	Name     string        `gorm:"not null"`
+	Price    float32       `gorm:"not null"`
+	Duration time.Duration `gorm:"not null"`
 }
-
