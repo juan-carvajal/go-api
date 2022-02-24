@@ -15,8 +15,10 @@ import (
 
 	"github.com/juan-carvajal/go-api/pkg/api/middleware"
 	"github.com/juan-carvajal/go-api/pkg/api/service/products"
+	"github.com/juan-carvajal/go-api/pkg/api/service/subscriptions"
+	"github.com/juan-carvajal/go-api/pkg/api/service/user"
 	"github.com/juan-carvajal/go-api/pkg/api/service/voucher"
-	"github.com/juan-carvajal/go-api/pkg/models"
+	"github.com/juan-carvajal/go-api/pkg/migrations"
 )
 
 func main() {
@@ -34,12 +36,7 @@ func main() {
 		panic("could not init db")
 	}
 
-	err = db.Debug().AutoMigrate(models.Product{}, models.Voucher{}, models.User{}, models.VoucherRedeem{}, models.Subscription{})
-	if err != nil {
-		panic("migration failed")
-	}
-
-	fmt.Println("migrations completed")
+	migrations.AutoMigrateAndSeed(db)
 
 	router := mux.NewRouter()
 
@@ -47,23 +44,35 @@ func main() {
 
 	productRepo := products.NewDefaultProductRepo(db)
 	voucherRepo := voucher.NewDefaultVoucherRepo(db)
+	userRepo := user.NewDefaultUserRepo(db)
+	subRepo := subscriptions.NewDefaultSubscriptionsRepo(db)
 
 	apiRouter := router.PathPrefix("/api").Subrouter()
+	apiRouter.Use(middleware.AuthMiddleware)
+
+	authRouter := router.PathPrefix("/auth").Subrouter()
 
 	apiRouter.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		// an example API handler
 		json.NewEncoder(w).Encode(map[string]bool{"ok": true})
 	})
 
+	// product routes
 	productService := products.NewDefaultProductService(productRepo, voucherRepo)
 	productService.RegisterRoutes(apiRouter)
+
+	// users/auth routes
+	userService := user.NewDefaultUserService(userRepo)
+	userService.RegisterRoutes(authRouter)
+
+	// subscription routes
+	subService := subscriptions.NewDefaultSubscriptionService(subRepo, voucherRepo, productRepo)
+	subService.RegisterRoutes(apiRouter)
 
 	fmt.Println("starting server")
 
 	srv := &http.Server{
 		Handler: router,
 		Addr:    ":8080",
-		// Good practice: enforce timeouts for servers you create!
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}

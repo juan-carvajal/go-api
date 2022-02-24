@@ -1,8 +1,7 @@
 package products
 
 import (
-	"fmt"
-	"math"
+	"time"
 
 	"github.com/juan-carvajal/go-api/pkg/models"
 	"github.com/juan-carvajal/go-api/pkg/models/shared"
@@ -50,17 +49,23 @@ func (r *DefaultProductRepo) GetAllProducts(params ProductQueryParams) (*[]model
 		return &products, nil
 	}
 
-	fmt.Println(&params.Voucher, params.Voucher)
-
-	if params.Voucher.Type == models.Fixed {
-		for i := range products {
-			products[i].Price = float32(math.Max(float64(products[i].Price)-float64(params.Voucher.Discount), 0))
-		}
-	} else {
-		for i := range products {
-			products[i].Price = products[i].Price * (1 - params.Voucher.Discount)
-		}
+	if params.Voucher.ValidThru.Before(time.Now()){
+		return &products, nil
 	}
+
+	for i := range products {
+		products[i].Price = products[i].DiscountedPrice(*params.Voucher)
+	}
+
+	// if params.Voucher.Type == models.Fixed {
+	// 	for i := range products {
+	// 		products[i].Price = float32(math.Max(float64(products[i].Price)-float64(params.Voucher.Discount), 0))
+	// 	}
+	// } else {
+	// 	for i := range products {
+	// 		products[i].Price = products[i].Price * (1 - params.Voucher.Discount)
+	// 	}
+	// }
 
 	return &products, nil
 }

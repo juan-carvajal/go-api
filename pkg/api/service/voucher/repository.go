@@ -7,6 +7,7 @@ import (
 
 type VoucherRepo interface {
 	GetVoucherByID(id string) (*models.Voucher, error)
+	GetVoucherRedeem(userId uint, voucherId string) (*models.VoucherRedeem, error)
 }
 
 type DefaultVoucherRepo struct {
@@ -27,4 +28,16 @@ func (r *DefaultVoucherRepo) GetVoucherByID(id string) (*models.Voucher, error) 
 	}
 
 	return voucher, nil
+}
+
+func (r *DefaultVoucherRepo) GetVoucherRedeem(userId uint, voucherId string) (*models.VoucherRedeem, error) {
+	voucherRedeem := &models.VoucherRedeem{}
+
+	tx := r.db.First(&voucherRedeem, "user_id = ? AND voucher_id >= ?", userId, voucherId)
+
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	return voucherRedeem, nil
 }

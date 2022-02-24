@@ -85,8 +85,8 @@ func (s *DefaultProductService) handleGetProductByID() http.HandlerFunc {
 }
 
 func (s *DefaultProductService) RegisterRoutes(router *mux.Router) error {
-	router.HandleFunc("/products/{id}", s.handleGetProductByID()).Methods("GET")
-	router.HandleFunc("/products", s.handleGetAllProducts()).Methods("GET")
+	router.HandleFunc("/products/{id}", s.handleGetProductByID()).Methods(http.MethodGet)
+	router.HandleFunc("/products", s.handleGetAllProducts()).Methods(http.MethodGet)
 
 	return nil
 }
